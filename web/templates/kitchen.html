@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Dapur — Madam Lily{% endblock %}
+
+{% block content %}
+<div x-data="kitchenApp()" x-cloak class="p-4">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">🍳 Antrian Dapur</h1>
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-gray-400" x-text="lastUpdate ? 'Update: ' + lastUpdate : ''"></span>
+      <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+            :class="connected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+        <span class="w-2 h-2 rounded-full" :class="connected ? 'bg-green-500' : 'bg-red-500'"></span>
+        <span x-text="connected ? 'Live' : 'Offline'"></span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Kolom pending + cooking -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- PENDING -->
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+        <h2 class="font-semibold text-gray-700 text-sm uppercase tracking-wide">Menunggu</h2>
+        <span class="ml-auto text-xs bg-yellow-100 text-yellow-700 font-bold px-2 py-0.5 rounded-full"
+              x-text="pending.length"></span>
+      </div>
+      <div class="space-y-3">
+        <template x-for="order in pending" :key="order.id">
+          <div class="bg-white rounded-xl shadow-sm border border-yellow-200 p-4">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <span class="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full"
+                      x-text="'#' + order.id"></span>
+                <span class="ml-1 text-sm font-semibold text-gray-800" x-text="order.customer_name"></span>
+                <template x-if="order.table_no">
+                  <span class="ml-1 text-xs text-gray-500" x-text="'Meja ' + order.table_no"></span>
+                </template>
+                <template x-if="!order.table_no">
+                  <span class="ml-1 text-xs text-gray-400">Take away</span>
+                </template>
+              </div>
+              <span class="text-xs text-gray-400 shrink-0" x-text="formatTime(order.created_at)"></span>
+            </div>
+
+            <ul class="text-sm text-gray-700 space-y-0.5 mb-2">
+              <template x-for="item in order.items" :key="item.name">
+                <li class="flex gap-1">
+                  <span x-text="item.emoji || '•'"></span>
+                  <span x-text="item.qty + 'x ' + item.name"></span>
+                </li>
+              </template>
+            </ul>
+
+            <template x-if="order.note">
+              <div class="text-xs italic text-gray-500 mb-2" x-text="'📝 ' + order.note"></div>
+            </template>
+
+            <button @click="updateStatus(order.id, 'cooking')"
+              class="w-full mt-1 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 active:scale-95 text-white text-sm font-semibold transition">
+              👨‍🍳 Mulai Masak
+            </button>
+          </div>
+        </template>
+        <div x-show="pending.length===0"
+             class="text-center text-gray-400 text-sm py-8 bg-white rounded-xl border border-dashed border-gray-200">
+          Tidak ada antrian
+        </div>
+      </div>
+    </div>
+
+    <!-- COOKING -->
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+        <h2 class="font-semibold text-gray-700 text-sm uppercase tracking-wide">Sedang Dimasak</h2>
+        <span class="ml-auto text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full"
+              x-text="cooking.length"></span>
+      </div>
+      <div class="space-y-3">
+        <template x-for="order in cooking" :key="order.id">
+          <div class="bg-white rounded-xl shadow-sm border border-blue-200 p-4">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full"
+                      x-text="'#' + order.id"></span>
+                <span class="ml-1 text-sm font-semibold text-gray-800" x-text="order.customer_name"></span>
+                <template x-if="order.table_no">
+                  <span class="ml-1 text-xs text-gray-500" x-text="'Meja ' + order.table_no"></span>
+                </template>
+                <template x-if="!order.table_no">
+                  <span class="ml-1 text-xs text-gray-400">Take away</span>
+                </template>
+              </div>
+              <span class="text-xs text-gray-400 shrink-0" x-text="formatTime(order.created_at)"></span>
+            </div>
+
+            <ul class="text-sm text-gray-700 space-y-0.5 mb-2">
+              <template x-for="item in order.items" :key="item.name">
+                <li class="flex gap-1">
+                  <span x-text="item.emoji || '•'"></span>
+                  <span x-text="item.qty + 'x ' + item.name"></span>
+                </li>
+              </template>
+            </ul>
+
+            <template x-if="order.note">
+              <div class="text-xs italic text-gray-500 mb-2" x-text="'📝 ' + order.note"></div>
+            </template>
+
+            <div class="flex gap-2 mt-1">
+              <button @click="updateStatus(order.id, 'done')"
+                class="flex-1 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 active:scale-95 text-white text-sm font-semibold transition">
+                ✅ Selesai
+              </button>
+              <button @click="updateStatus(order.id, 'cancelled')"
+                class="py-1.5 px-3 rounded-lg bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 text-sm font-semibold transition">
+                ✕
+              </button>
+            </div>
+          </div>
+        </template>
+        <div x-show="cooking.length===0"
+             class="text-center text-gray-400 text-sm py-8 bg-white rounded-xl border border-dashed border-gray-200">
+          Tidak ada yang sedang dimasak
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function kitchenApp() {
+  return {
+    pending: [],
+    cooking: [],
+    connected: false,
+    lastUpdate: '',
+    _timer: null,
+
+    async init() {
+      await this.refresh();
+      this._timer = setInterval(() => this.refresh(), 5000);
+    },
+
+    destroy() {
+      if (this._timer) clearInterval(this._timer);
+    },
+
+    async refresh() {
+      try {
+        const res = await fetch('/api/queue');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        this.pending = data.filter(o => o.status === 'pending');
+        this.cooking = data.filter(o => o.status === 'cooking');
+        this.connected = true;
+        const now = new Date();
+        this.lastUpdate = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch(e) {
+        this.connected = false;
+      }
+    },
+
+    async updateStatus(id, status) {
+      try {
+        const res = await fetch(`/api/queue/${id}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        if (res.ok) await this.refresh();
+      } catch(e) {
+        console.error(e);
+      }
+    },
+
+    formatTime(ts) {
+      if (!ts) return '';
+      try {
+        const d = new Date(ts);
+        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      } catch { return ts; }
+    },
+  };
+}
+</script>
+{% endblock %}

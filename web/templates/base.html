@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Madam Lily POS{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  [x-cloak]{display:none!important}
+  .scrollbar-thin::-webkit-scrollbar{width:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- NAV -->
+<nav class="bg-orange-500 text-white shadow-md">
+  <div class="flex items-center justify-between px-4 py-2">
+    <span class="font-bold text-lg tracking-wide">🍽 Madam Lily</span>
+    <div class="flex gap-1 text-sm">
+      <a href="/pos"
+         class="px-3 py-1 rounded {% if active=='pos' %}bg-white text-orange-600 font-semibold{% else %}hover:bg-orange-400{% endif %}">
+        Kasir
+      </a>
+      <a href="/kitchen"
+         class="px-3 py-1 rounded {% if active=='kitchen' %}bg-white text-orange-600 font-semibold{% else %}hover:bg-orange-400{% endif %}">
+        Dapur
+      </a>
+      <a href="/admin"
+         class="px-3 py-1 rounded {% if active=='admin' %}bg-white text-orange-600 font-semibold{% else %}hover:bg-orange-400{% endif %}">
+        Dashboard
+      </a>
+      <a href="/admin/tables"
+         class="px-3 py-1 rounded {% if active=='tables' %}bg-white text-orange-600 font-semibold{% else %}hover:bg-orange-400{% endif %}">
+        Meja
+      </a>
+    </div>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+</body>
+</html>

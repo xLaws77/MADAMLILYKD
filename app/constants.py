@@ -36,6 +36,6 @@ DATABASE_VERSION = "1.0.0"
 # BUILD
 # ==========================================================
 
-BUILD = "2026.07.21"
+BUILD = "2026.07.10"
 
 ENVIRONMENT = "Development"

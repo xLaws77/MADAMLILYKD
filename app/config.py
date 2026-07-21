@@ -24,6 +24,10 @@ ENABLE_DEBUG = False
 # SMART ORDER INTELLIGENCE
 # ==========================================================
 
+# Saklar utama lapisan intelijen (app/intelligence/).
+# False = bot berperilaku 100% seperti sebelum lapisan ini ada.
 ENABLE_INTELLIGENCE = True
 
+# Ambang confidence (0-100). Di bawah ini, teks ASLI yang dipakai
+# (jalur lama + gate AI hybrid existing yang memutuskan).
 INTELLIGENCE_CONFIDENCE = 70

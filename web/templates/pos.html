@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Kasir — Madam Lily{% endblock %}
+
+{% block content %}
+<div x-data="posApp()" x-cloak class="flex h-[calc(100vh-44px)]">
+
+  <!-- ===================== KIRI: MENU ===================== -->
+  <div class="flex flex-col flex-1 overflow-hidden">
+
+    <!-- Category tabs -->
+    <div class="flex gap-1 px-3 py-2 bg-white shadow-sm overflow-x-auto shrink-0">
+      <button @click="activeCategory=''"
+        :class="activeCategory==='' ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+        class="px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition">
+        Semua
+      </button>
+      <template x-for="cat in categories" :key="cat">
+        <button @click="activeCategory=cat"
+          :class="activeCategory===cat ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+          class="px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition"
+          x-text="cat">
+        </button>
+      </template>
+    </div>
+
+    <!-- Search -->
+    <div class="px-3 py-2 bg-white border-b shrink-0">
+      <input x-model="search" type="text" placeholder="🔍 Cari menu..."
+        class="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+    </div>
+
+    <!-- Menu grid -->
+    <div class="flex-1 overflow-y-auto p-3 scrollbar-thin">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <template x-for="item in filteredMenus()" :key="item.name">
+          <button @click="addToCart(item)"
+            class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:border-orange-400 hover:shadow-md transition text-left active:scale-95">
+            <div class="text-2xl mb-1" x-text="item.emoji || '🍽'"></div>
+            <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-2" x-text="item.name"></div>
+            <div class="text-orange-500 font-bold text-sm mt-1"
+                 x-text="formatRiel(item.price)"></div>
+          </button>
+        </template>
+        <div x-show="filteredMenus().length===0"
+             class="col-span-full text-center text-gray-400 py-10 text-sm">
+          Tidak ada menu ditemukan.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== KANAN: CART ===================== -->
+  <div class="w-80 bg-white border-l flex flex-col shadow-xl shrink-0">
+
+    <div class="px-4 py-3 bg-orange-500 text-white font-bold text-base shrink-0">
+      🛒 Pesanan
+    </div>
+
+    <!-- Cart items -->
+    <div class="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin">
+      <div x-show="cart.length===0" class="text-center text-gray-400 py-12 text-sm">
+        Belum ada item.<br>Klik menu untuk menambahkan.
+      </div>
+      <template x-for="(item, idx) in cart" :key="item.name">
+        <div class="flex items-center gap-2 py-2 border-b border-gray-100 last:border-0">
+          <span class="text-lg" x-text="item.emoji || '🍽'"></span>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-medium text-gray-800 truncate" x-text="item.name"></div>
+            <div class="text-xs text-orange-500" x-text="formatRiel(item.price)"></div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button @click="changeQty(idx,-1)"
+              class="w-6 h-6 rounded-full bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 text-xs font-bold flex items-center justify-center">
+              −
+            </button>
+            <span class="text-sm font-bold w-5 text-center" x-text="item.qty"></span>
+            <button @click="changeQty(idx,1)"
+              class="w-6 h-6 rounded-full bg-gray-100 hover:bg-green-100 text-gray-600 hover:text-green-600 text-xs font-bold flex items-center justify-center">
+              +
+            </button>
+          </div>
+          <div class="text-xs font-semibold text-gray-700 w-16 text-right"
+               x-text="formatRiel(item.price * item.qty)"></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Total -->
+    <div class="px-4 py-2 border-t bg-gray-50 shrink-0">
+      <div class="flex justify-between items-center">
+        <span class="text-sm text-gray-500">Total</span>
+        <span class="text-lg font-bold text-orange-600" x-text="formatRiel(totalRiel())"></span>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="px-4 py-3 border-t space-y-2 shrink-0">
+      <div>
+        <label class="text-xs text-gray-500 font-medium">Nama Customer *</label>
+        <input x-model="customerName" type="text" placeholder="Nama / nomor antrian"
+          class="w-full mt-0.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 font-medium">Meja</label>
+        <select x-model="tableNo"
+          class="w-full mt-0.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+          <option value="">— Take away —</option>
+          {% for t in tables %}
+          <option value="{{ t.table_no }}">{{ t.table_no }}{% if t.name %} — {{ t.name }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 font-medium">Catatan</label>
+        <input x-model="note" type="text" placeholder="(opsional)"
+          class="w-full mt-0.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="px-4 pb-4 shrink-0">
+      <button @click="submitOrder()"
+        :disabled="submitting || cart.length===0"
+        :class="(submitting || cart.length===0) ? 'bg-gray-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 active:scale-95'"
+        class="w-full py-3 rounded-xl text-white font-bold text-base transition shadow">
+        <span x-show="!submitting">✅ Kirim ke Dapur</span>
+        <span x-show="submitting">⏳ Mengirim...</span>
+      </button>
+      <!-- Success toast -->
+      <div x-show="toastMsg" x-transition
+           class="mt-2 text-center text-sm font-medium text-green-600 bg-green-50 rounded-lg py-2"
+           x-text="toastMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function posApp() {
+  return {
+    menus: [],
+    categories: [],
+    activeCategory: '',
+    search: '',
+    cart: [],
+    customerName: '',
+    tableNo: '',
+    note: '',
+    submitting: false,
+    toastMsg: '',
+
+    async init() {
+      const res = await fetch('/api/menu');
+      this.menus = await res.json();
+      const cats = [...new Set(this.menus.map(m => m.category).filter(Boolean))];
+      this.categories = cats;
+    },
+
+    filteredMenus() {
+      let list = this.menus;
+      if (this.activeCategory) list = list.filter(m => m.category === this.activeCategory);
+      if (this.search.trim()) {
+        const q = this.search.trim().toLowerCase();
+        list = list.filter(m => m.name.toLowerCase().includes(q));
+      }
+      return list;
+    },
+
+    addToCart(item) {
+      const idx = this.cart.findIndex(c => c.name === item.name);
+      if (idx >= 0) {
+        this.cart[idx].qty++;
+      } else {
+        this.cart.push({ ...item, qty: 1 });
+      }
+    },
+
+    changeQty(idx, delta) {
+      this.cart[idx].qty += delta;
+      if (this.cart[idx].qty <= 0) this.cart.splice(idx, 1);
+    },
+
+    totalRiel() {
+      return this.cart.reduce((s, i) => s + i.price * i.qty, 0);
+    },
+
+    formatRiel(n) {
+      return n.toLocaleString('id-ID') + ' R';
+    },
+
+    async submitOrder() {
+      if (!this.cart.length) return;
+      if (!this.customerName.trim()) {
+        alert('Isi nama customer terlebih dahulu!');
+        return;
+      }
+      this.submitting = true;
+      try {
+        const res = await fetch('/api/pos/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: this.cart,
+            customer_name: this.customerName.trim(),
+            table_no: this.tableNo,
+            note: this.note.trim(),
+            source: 'pos',
+          }),
+        });
+        if (res.ok) {
+          this.cart = [];
+          this.customerName = '';
+          this.tableNo = '';
+          this.note = '';
+          this.toastMsg = '✅ Order terkirim ke dapur!';
+          setTimeout(() => this.toastMsg = '', 3000);
+        } else {
+          const d = await res.json();
+          alert('Gagal: ' + (d.detail || 'Error tidak diketahui'));
+        }
+      } catch(e) {
+        alert('Koneksi error: ' + e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+  }
+}
+</script>
+{% endblock %}

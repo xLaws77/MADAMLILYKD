@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Order — Madam Lily{% if meja %} · Meja {{ meja }}{% endif %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  [x-cloak]{display:none!important}
+  .scrollbar-thin::-webkit-scrollbar{width:6px}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#fed7aa;border-radius:3px}
+</style>
+</head>
+<body class="bg-orange-50 min-h-screen" x-data="selfOrderApp()" x-cloak>
+
+  <!-- Header -->
+  <div class="sticky top-0 z-10 bg-orange-500 text-white px-4 py-3 shadow-md">
+    <div class="flex items-center justify-between max-w-lg mx-auto">
+      <div>
+        <div class="font-bold text-base">🍽 Madam Lily</div>
+        {% if meja %}
+        <div class="text-xs text-orange-100">Meja {{ meja }}</div>
+        {% else %}
+        <div class="text-xs text-orange-100">Self Order</div>
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-2">
+        <button @click="cartOpen=!cartOpen"
+          class="relative p-2 rounded-lg bg-orange-400 hover:bg-orange-300 transition">
+          🛒
+          <span x-show="cartCount()>0"
+                class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold"
+                x-text="cartCount()"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category tabs -->
+  <div class="sticky top-14 z-10 bg-white shadow-sm overflow-x-auto">
+    <div class="flex gap-1 px-3 py-2 max-w-lg mx-auto">
+      <button @click="activeCategory=''"
+        :class="activeCategory==='' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'"
+        class="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition shrink-0">
+        Semua
+      </button>
+      <template x-for="cat in categories" :key="cat">
+        <button @click="activeCategory=cat"
+          :class="activeCategory===cat ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'"
+          class="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition shrink-0"
+          x-text="cat">
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <!-- Menu list -->
+  <div class="max-w-lg mx-auto px-3 py-4 pb-32 space-y-2">
+    <template x-for="item in filteredMenus()" :key="item.name">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
+        <div class="text-3xl shrink-0" x-text="item.emoji || '🍽'"></div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-gray-800" x-text="item.name"></div>
+          <div class="text-orange-500 font-bold text-sm" x-text="formatRiel(item.price)"></div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <template x-if="getQty(item.name) > 0">
+            <div class="flex items-center gap-1">
+              <button @click="changeQty(item, -1)"
+                class="w-7 h-7 rounded-full bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 text-sm font-bold flex items-center justify-center">
+                −
+              </button>
+              <span class="text-sm font-bold w-5 text-center" x-text="getQty(item.name)"></span>
+            </div>
+          </template>
+          <button @click="changeQty(item, 1)"
+            class="w-7 h-7 rounded-full bg-orange-100 hover:bg-orange-200 text-orange-600 text-sm font-bold flex items-center justify-center">
+            +
+          </button>
+        </div>
+      </div>
+    </template>
+    <div x-show="filteredMenus().length===0"
+         class="text-center text-gray-400 py-10 text-sm">
+      Tidak ada menu tersedia.
+    </div>
+  </div>
+
+  <!-- Cart Sheet (slide up) -->
+  <div x-show="cartOpen" x-transition
+       class="fixed inset-0 z-20 flex flex-col justify-end bg-black/40"
+       @click.self="cartOpen=false">
+    <div class="bg-white rounded-t-2xl max-h-[80vh] flex flex-col shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 border-b shrink-0">
+        <span class="font-bold text-gray-800">🛒 Pesanan Kamu</span>
+        <button @click="cartOpen=false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2 scrollbar-thin">
+        <div x-show="cart.length===0" class="text-center text-gray-400 py-8 text-sm">
+          Belum ada item dipilih.
+        </div>
+        <template x-for="(item, idx) in cart" :key="item.name">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl" x-text="item.emoji || '🍽'"></span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-800 truncate" x-text="item.name"></div>
+              <div class="text-xs text-orange-500" x-text="formatRiel(item.price)"></div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button @click="changeQty(item, -1)"
+                class="w-6 h-6 rounded-full bg-gray-100 hover:bg-red-100 text-gray-600 text-xs font-bold flex items-center justify-center">
+                −
+              </button>
+              <span class="text-sm font-bold w-5 text-center" x-text="item.qty"></span>
+              <button @click="changeQty(item, 1)"
+                class="w-6 h-6 rounded-full bg-gray-100 hover:bg-green-100 text-gray-600 text-xs font-bold flex items-center justify-center">
+                +
+              </button>
+            </div>
+            <div class="text-xs font-semibold text-gray-700 w-16 text-right"
+                 x-text="formatRiel(item.price * item.qty)"></div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Total + form -->
+      <div class="px-4 py-3 border-t space-y-3 shrink-0">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500">Total</span>
+          <span class="text-lg font-bold text-orange-600" x-text="formatRiel(total())"></span>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 font-medium">Nama Kamu *</label>
+          <input x-model="customerName" type="text" placeholder="Nama / nomor"
+            class="w-full mt-0.5 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 font-medium">Catatan</label>
+          <input x-model="note" type="text" placeholder="(opsional)"
+            class="w-full mt-0.5 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        </div>
+        <button @click="submitOrder()"
+          :disabled="submitting || cart.length===0"
+          :class="(submitting || cart.length===0) ? 'bg-gray-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 active:scale-95'"
+          class="w-full py-3 rounded-xl text-white font-bold text-base transition shadow">
+          <span x-show="!submitting">✅ Pesan Sekarang</span>
+          <span x-show="submitting">⏳ Mengirim...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success overlay -->
+  <div x-show="done" x-transition
+       class="fixed inset-0 z-30 flex items-center justify-center bg-black/50 px-6">
+    <div class="bg-white rounded-2xl p-8 text-center shadow-2xl max-w-xs w-full">
+      <div class="text-5xl mb-4">✅</div>
+      <div class="text-lg font-bold text-gray-800 mb-2">Pesanan Terkirim!</div>
+      <div class="text-sm text-gray-500 mb-6">Dapur sedang menyiapkan pesanan kamu. Mohon tunggu.</div>
+      <button @click="resetAll()"
+        class="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition">
+        Order Lagi
+      </button>
+    </div>
+  </div>
+
+<script>
+const MEJA = "{{ meja }}";
+
+function selfOrderApp() {
+  return {
+    menus: [],
+    categories: [],
+    activeCategory: '',
+    cart: [],
+    customerName: '',
+    note: '',
+    cartOpen: false,
+    submitting: false,
+    done: false,
+
+    async init() {
+      const res = await fetch('/api/menu');
+      this.menus = await res.json();
+      const cats = [...new Set(this.menus.map(m => m.category).filter(Boolean))];
+      this.categories = cats;
+    },
+
+    filteredMenus() {
+      if (this.activeCategory) return this.menus.filter(m => m.category === this.activeCategory);
+      return this.menus;
+    },
+
+    getQty(name) {
+      const found = this.cart.find(c => c.name === name);
+      return found ? found.qty : 0;
+    },
+
+    changeQty(item, delta) {
+      const idx = this.cart.findIndex(c => c.name === item.name);
+      if (idx >= 0) {
+        this.cart[idx].qty += delta;
+        if (this.cart[idx].qty <= 0) this.cart.splice(idx, 1);
+      } else if (delta > 0) {
+        this.cart.push({ ...item, qty: 1 });
+      }
+    },
+
+    cartCount() {
+      return this.cart.reduce((s, i) => s + i.qty, 0);
+    },
+
+    total() {
+      return this.cart.reduce((s, i) => s + i.price * i.qty, 0);
+    },
+
+    formatRiel(n) {
+      return n.toLocaleString('id-ID') + ' R';
+    },
+
+    async submitOrder() {
+      if (!this.cart.length) return;
+      if (!this.customerName.trim()) {
+        alert('Isi nama kamu terlebih dahulu!');
+        return;
+      }
+      this.submitting = true;
+      try {
+        const res = await fetch('/api/pos/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: this.cart,
+            customer_name: this.customerName.trim(),
+            table_no: MEJA,
+            note: this.note.trim(),
+            source: 'qr',
+          }),
+        });
+        if (res.ok) {
+          this.cartOpen = false;
+          this.done = true;
+        } else {
+          const d = await res.json();
+          alert('Gagal: ' + (d.detail || 'Error tidak diketahui'));
+        }
+      } catch(e) {
+        alert('Koneksi error: ' + e.message);
+      } finally {
+        this.submitting = false;
+      }
+    },
+
+    resetAll() {
+      this.cart = [];
+      this.customerName = '';
+      this.note = '';
+      this.done = false;
+    },
+  };
+}
+</script>
+</body>
+</html>
